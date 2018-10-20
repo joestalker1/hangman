@@ -1,7 +1,8 @@
 import cats.Monad
+import cats.effect.Bracket
 import cats.implicits._
 
-import scala.io.Source
+import scala.io.{BufferedSource, Source}
 import scala.language.higherKinds
 
 //word dictionary algebra
@@ -14,12 +15,10 @@ trait WordDict[F[_]] {
 import Utils._
 
 class FileWordDict[F[_] : Monad](private val fileNameList: List[String]) extends WordDict[F] {
-  private val M = implicitly[Monad[F]]
-  private var wordStorage: WordStorage = null
+  private var wordStorage: WordStorage = WordStorage()
 
-  override def loadDict(): F[Either[Throwable, Unit]] = {
-    wordStorage = WordStorage()
-    M.point(fileNameList.foreach{ fileName =>
+  override def loadDict(): F[Either[Throwable, Unit]] =
+    (fileNameList.foreach { fileName =>
       val file = openResource(fileName)
       use {
         for (s <- file.getLines()) {
@@ -28,14 +27,14 @@ class FileWordDict[F[_] : Monad](private val fileNameList: List[String]) extends
           wordStorage = wordStorage + (if (str.nonEmpty) str(0) else s)
         }
       }(release(file))
-    }.asRight)
-  }
+    }.asRight).pure[F]
+
 
   override def findByFirstLastCharLen(fromChar: Char, toChar: Char, expectedLen: Int): F[List[String]] =
-    M.point(
+    (
       if (wordStorage == null) List.empty
       else wordStorage.findByFirstLastCharLen(fromChar, toChar, expectedLen)
-    )
+    ).pure[F]
 
   private def release(source: Source): Unit = source.close()
 }
