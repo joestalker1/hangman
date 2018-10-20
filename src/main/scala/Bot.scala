@@ -4,14 +4,8 @@ import cats.implicits._
 
 import scala.io.StdIn
 
-trait Bot[F[_]] {
-  def start(): F[Unit]
-}
-
-class SimpleBot[F[_] : Monad](wordDict: WordDict[F], game: Game[F], canBeMistaken: Int) extends Bot[F] {
-  private val M = implicitly[Monad[F]]
-
-  override def start(): F[Unit] = for {
+class Bot[F[_]: Monad](wordDict: WordDict[F], game: Game[F], canBeMistaken: Int) {
+  def start(): F[Unit] = for {
     _ <- writeString(s"I try to guess your word using $canBeMistaken failed tries. Please type first,last characters and a word length space separated.\nFor example:a b 10")
     answer <- readString()
     word <- parseWord(answer)
@@ -24,7 +18,7 @@ class SimpleBot[F[_] : Monad](wordDict: WordDict[F], game: Game[F], canBeMistake
   private def guessedWord(s: String)(game: Game[F]): F[Unit] = for {
     _ <- writeString(s"Your word is '$s'. New game (y/n)?")
     yesno <- readString()
-    _ <- if (yesno.toLowerCase == "y") start() else M.point(())
+    _ <- if (yesno.toLowerCase == "y") start() else Monad[F].point(())
   } yield ()
 
 
@@ -39,10 +33,10 @@ class SimpleBot[F[_] : Monad](wordDict: WordDict[F], game: Game[F], canBeMistake
   private def parseRespAndTellSuccOrFailedAttempt(char: Char, posOr: String)(game: Game[F]): F[Unit] = {
     val nums = posOr.split(" ")
     var succ = false
-    if (nums.nonEmpty) M.point(nums.map(_.toInt).foreach { pos =>
+    if (nums.nonEmpty) Monad[F].point(nums.map(_.toInt).foreach { pos =>
       succ = pos > -1
       tellSuccOrFailedAttempt(char, pos)
-    }).flatMap(_ => if (succ) writeGuessedWord() else M.point())
+    }).flatMap(_ => if (succ) writeGuessedWord() else ().pure[F])
     else {
        val pos = posOr.toInt
        tellSuccOrFailedAttempt(char, pos)
@@ -68,16 +62,16 @@ class SimpleBot[F[_] : Monad](wordDict: WordDict[F], game: Game[F], canBeMistake
     _ <- writeString(s"I've lost. I've made $canBeMistaken mistakes.")
     _ <- writeString("New game (y/n)?")
     yesno <- readString()
-    _ <- if (yesno.toLowerCase == "y") start() else M.point(())
+    _ <- if (yesno.toLowerCase == "y") start() else ().pure[F]
   } yield ()
 
-  private def parseWord(s: String): F[Word] = M.point {
+  private def parseWord(s: String): F[Word] = {
     val Array(ch1, ch2, len) = s.split(" ")
     Word(ch1(0), ch2(0), len.toInt)
-  }
+  }.pure[F]
 
-  private def readString(): F[String] = M.point(StdIn.readLine())
+  private def readString(): F[String] = (StdIn.readLine()).pure[F]
 
-  private def writeString(s: String): F[Unit] = M.point(println(s))
+  private def writeString(s: String): F[Unit] = (println(s)).pure[F]
 
 }

@@ -26,45 +26,45 @@ object Game {
   case class SuccAttempt(char: Char, pos: Int) extends Answer
 }
 
-class SimpleGame[F[_] : Monad] extends Game[F] {
-  private val M = implicitly[Monad[F]]
+class HangmanGame[F[_] : Monad] extends Game[F] {
+  type GuessRes = Option[Either[String, Char]]
+
   private var trie = Trie()
   private var wordLen = 0
   private var canBeMistaken = 0
 
   override def buildTrie(list: List[String]): F[Unit] =
-    M.point {
+    Monad[F].point {
       trie = Trie()
       for (s <- list) {
         trie.insert(s)
       }
     }
 
-  override def start(word: Word, failedTries: Int): F[Unit] = M.point {
+  override def start(word: Word, failedTries: Int): F[Unit] = {
     trie.markAsGuessed(word.first, 0)
     trie.markAsGuessed(word.last, word.len - 1)
     wordLen = word.len
     canBeMistaken = failedTries
-  }
+  }.pure[F]
 
-  override def guess(): F[Option[Either[String, Char]]] = {
-    if(canBeMistaken == 0) M.point(None)
+  override def guess(): F[GuessRes] = {
+    if(canBeMistaken == 0) (None:GuessRes).pure[F]
     else{
       val realLen = trie.guessedSize()
-      if (wordLen == realLen) M.point(Some(trie.guessedString(wordLen).asLeft))
-      else M.point(Some(trie.guess().fold(throw new RuntimeException("Unexpected behaviour"))(identity[Char]).asRight))
+      if (wordLen == realLen) (Some(trie.guessedString(wordLen).asLeft):GuessRes).pure[F]
+      else (Some(trie.guess().fold(throw new RuntimeException("Unexpected behaviour"))(identity[Char]).asRight):GuessRes).pure[F]
     }
   }
 
-  override def tell(answer: Answer): F[Unit] = M.point {
+  override def tell(answer: Answer): F[Unit] = {
     answer match {
       case FailedAttempt(char) => trie.markAsMissing(char)
                                   canBeMistaken -= 1
       case SuccAttempt(char, pos) => trie.markAsGuessed(char, pos)
     }
-  }
+  }.pure[F]
 
-  override def guessedWord():F[String] = M.point(trie.guessedString(wordLen))
-
+  override def guessedWord():F[String] = trie.guessedString(wordLen).pure[F]
 }
 
