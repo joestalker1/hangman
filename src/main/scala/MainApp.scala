@@ -6,7 +6,7 @@ object MainApp extends App {
 
   implicit val console = Console.console[Effect]()
   val program = for {
-    config <- AppConfig.loadAll[IO]()
+    config <- AppConfig.loadAll[Effect]()
     wordDict = new FileWordDict[Effect](config.words)
     game  = new HangmanGame[Effect]()
     bot = new Bot[Effect](wordDict, game, config.attempts)
