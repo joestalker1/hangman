@@ -28,12 +28,12 @@ class Trie private(private val root: TrieNode) {
     guessedChars = guessedChars + (char -> (set + pos))
     // disable all chars at the position except 'guessed' one.
     levelToTrieNode.get(pos).foreach{list =>
-       list.foreach{ node =>
-         val index = char.toInt
-         for(i <- 0 until node.parent.children.length){
-           if(i != index) node.parent.children(i) = null
-         }
-       }
+      list.foreach{ node =>
+        val index = char.toInt
+        for(i <- 0 until node.parent.children.length){
+          if(i != index) node.parent.children(i) = null
+        }
+      }
     }
   }
 
@@ -61,12 +61,12 @@ class Trie private(private val root: TrieNode) {
   }
 
   def guessedString(len: Int): String = {
-     val buf = new StringBuilder(len)
-     for(_ <- 0 to len - 1) buf.append('_')
-     guessedChars.foreach{ case (char, set) =>
-        set.foreach(buf(_) = char)
-     }
-     buf.result()
+    val buf = new StringBuilder(len)
+    for(_ <- 0 to len - 1) buf.append('_')
+    guessedChars.foreach{ case (char, set) =>
+      set.foreach(buf(_) = char)
+    }
+    buf.result()
   }
 
   def guessedSize():Int = guessedChars.values.map(_.size).sum

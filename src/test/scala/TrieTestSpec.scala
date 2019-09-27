@@ -1,4 +1,4 @@
-import cats.Id
+import cats.effect.IO
 import org.scalatest._
 
 class TrieTestSpec extends FlatSpec with Matchers with OptionValues with Inside with Inspectors {
@@ -44,14 +44,14 @@ class TrieTestSpec extends FlatSpec with Matchers with OptionValues with Inside 
 
   }
 
-  type Effect[A] = Id[A]
+  type Effect[A] = IO[A]
 
   "Trie" should "guess the word 'recover' if it loaded the all string from a file" in {
     val wordDict = new FileWordDict[Effect](List("test_dict.txt"))
     wordDict.loadDict()
     val words = wordDict.findByFirstLastCharLen('r', 'r', 7)
     val trie = Trie()
-    words.foreach(trie.insert(_))
+    words.unsafeRunSync().foreach(trie.insert(_))
     trie.insert("recover")
 
     trie.markAsGuessed('r', 0)

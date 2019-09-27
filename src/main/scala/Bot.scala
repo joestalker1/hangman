@@ -1,13 +1,12 @@
 import Game._
 import cats.Monad
+import cats.effect.Sync
 import cats.implicits._
 
-import scala.io.StdIn
-
-class Bot[F[_]: Monad](wordDict: WordDict[F], game: Game[F], canBeMistaken: Int) {
+class Bot[F[_]: Sync : Console](wordDict: WordDict[F], game: Game[F], canBeMistaken: Int) {
   def start(): F[Unit] = for {
-    _ <- writeString(s"I try to guess your word using $canBeMistaken failed tries. Please type first,last characters and a word length space separated.\nFor example:a b 10")
-    answer <- readString()
+    _ <- Console[F].putString(s"I try to guess your word using $canBeMistaken failed tries. Please type first,last characters and a word length space separated.\nFor example:a b 10")
+    answer <- Console[F].getString()
     word <- parseWord(answer)
     foundWords <- wordDict.findByFirstLastCharLen(word.first, word.last, word.len)
     _ <- game.buildTrie(foundWords)
@@ -16,16 +15,15 @@ class Bot[F[_]: Monad](wordDict: WordDict[F], game: Game[F], canBeMistaken: Int)
   } yield ()
 
   private def guessedWord(s: String)(game: Game[F]): F[Unit] = for {
-    _ <- writeString(s"Your word is '$s'. New game (y/n)?")
-    yesno <- readString()
-    _ <- if (yesno.toLowerCase == "y") start() else Monad[F].point(())
+    _ <- Console[F].putString(s"Your word is '$s'. New game (y/n)?")
+    yesno <- Console[F].getString()
+    _ <- if (yesno.toLowerCase == "y") start() else ().pure[F]
   } yield ()
 
-
   private def guessChar(char: Char)(game: Game[F]): F[Unit] = for {
-    _ <- writeString(s"Do you have '$char'? Please type its position or -1 in other case.")
-    _ <- writeString("If char occurs in a word a few times,please type its positions separated by space.")
-    posOr <- readString()
+    _ <- Console[F].putString(s"Do you have '$char'? Please type its position or -1 in other case.")
+    _ <- Console[F].putString("If char occurs in a word a few times,please type its positions separated by space.")
+    posOr <- Console[F].getString()
     _ <- parseRespAndTellSuccOrFailedAttempt(char, posOr)(game)
     _ <- guessing(game)
   } yield ()
@@ -49,7 +47,7 @@ class Bot[F[_]: Monad](wordDict: WordDict[F], game: Game[F], canBeMistaken: Int)
 
   private def writeGuessedWord(): F[Unit] = for {
     word <- game.guessedWord()
-    _ <- writeString(word)
+    _ <- Console[F].putString(word)
   } yield ()
 
   private def guessing(game: Game[F]): F[Unit] =
@@ -59,9 +57,9 @@ class Bot[F[_]: Monad](wordDict: WordDict[F], game: Game[F], canBeMistaken: Int)
     } yield ()
 
   private def tellManyMistakes(): F[Unit] = for {
-    _ <- writeString(s"I've lost. I've made $canBeMistaken mistakes.")
-    _ <- writeString("New game (y/n)?")
-    yesno <- readString()
+    _ <- Console[F].putString(s"I've lost. I've made $canBeMistaken mistakes.")
+    _ <- Console[F].putString("New game (y/n)?")
+    yesno <- Console[F].getString()
     _ <- if (yesno.toLowerCase == "y") start() else ().pure[F]
   } yield ()
 
@@ -69,9 +67,4 @@ class Bot[F[_]: Monad](wordDict: WordDict[F], game: Game[F], canBeMistaken: Int)
     val Array(ch1, ch2, len) = s.split(" ")
     Word(ch1(0), ch2(0), len.toInt)
   }.pure[F]
-
-  private def readString(): F[String] = (StdIn.readLine()).pure[F]
-
-  private def writeString(s: String): F[Unit] = (println(s)).pure[F]
-
 }

@@ -1,4 +1,4 @@
-import cats.Monad
+import cats.effect.Sync
 import cats.implicits._
 
 import scala.language.higherKinds
@@ -26,7 +26,7 @@ object Game {
   case class SuccAttempt(char: Char, pos: Int) extends Answer
 }
 
-class HangmanGame[F[_] : Monad] extends Game[F] {
+class HangmanGame[F[_] : Sync] extends Game[F] {
   type GuessRes = Option[Either[String, Char]]
 
   private var trie = Trie()
@@ -34,7 +34,7 @@ class HangmanGame[F[_] : Monad] extends Game[F] {
   private var canBeMistaken = 0
 
   override def buildTrie(list: List[String]): F[Unit] =
-    Monad[F].point {
+    Sync[F].pure {
       trie = Trie()
       for (s <- list) {
         trie.insert(s)
@@ -65,6 +65,6 @@ class HangmanGame[F[_] : Monad] extends Game[F] {
     }
   }.pure[F]
 
-  override def guessedWord():F[String] = trie.guessedString(wordLen).pure[F]
+  override def guessedWord(): F[String] = trie.guessedString(wordLen).pure[F]
 }
 
