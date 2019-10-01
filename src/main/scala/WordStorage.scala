@@ -1,21 +1,25 @@
-import WordStorage._
+import cats.Monoid
 
 import scala.collection.mutable.ArrayBuffer
 import cats.implicits._
 
 /**
-  * Store strings in the single linked list with complexity O(1),then sort them by the demand.
-  *
-  * @param wordInfoList
-  */
-case class WordStorage private(wordInfoList: List[WordInfo] = List.empty) {
+ * Store strings in the single linked list with complexity O(1),then sort them by the demand.
+ *
+ */
+case class WordInfo(len: Int, ref: String) extends Product with Serializable
+
+case class WordStorage private(words: List[String] = List.empty) {
   type WordBucket = ArrayBuffer[WordInfo]
+
+  val alphabetSize = 127
 
   private lazy val wordBuckets: Array[WordBucket] = {
     //buckets has empty items but wasting is tiny
     //TODO start using immutable collections)
     val buckets = Array.ofDim[WordBucket](alphabetSize)
-    for (wi <- wordInfoList) {
+    for (s <- words) {
+      val wi = WordInfo(s.length, s)
       val firstChar = wi.ref(0)
       val index = firstChar.toInt
       if (buckets(index) == null) {
@@ -29,8 +33,6 @@ case class WordStorage private(wordInfoList: List[WordInfo] = List.empty) {
     }
     buckets
   }
-
-  def +(s: String): WordStorage = copy(WordInfo(s.length, s) :: wordInfoList)
 
   def findByFirstLastCharLen(fromChar: Char, toChar: Char, expectedLen: Int): List[String] = {
     val index = fromChar.toInt
@@ -48,7 +50,7 @@ case class WordStorage private(wordInfoList: List[WordInfo] = List.empty) {
         } else if (wordList(mid).len < expectedLen) start = mid + 1
         else end = mid - 1
       }
-      resList.filter(_(expectedLen - 1) == toChar)
+      resList.filter(_ (expectedLen - 1) == toChar)
     }
   }
 
@@ -66,7 +68,10 @@ case class WordStorage private(wordInfoList: List[WordInfo] = List.empty) {
 }
 
 object WordStorage {
-  val alphabetSize = 127
-  case class WordInfo(len: Int, ref: String)
 
+  implicit val wordStorageMonoid: Monoid[WordStorage] = new Monoid[WordStorage] {
+    override def empty: WordStorage = WordStorage()
+
+    override def combine(x: WordStorage, y: WordStorage): WordStorage = WordStorage(x.words ++ y.words)
+  }
 }

@@ -3,7 +3,14 @@ import cats.Monad
 import cats.effect.Sync
 import cats.implicits._
 
-class Bot[F[_]: Sync : Console](wordDict: WordDict[F], game: Game[F], canBeMistaken: Int) {
+/**
+ * Implement computer logic to guess word that a human makes up.
+ * @param wordDict
+ * @param game
+ * @param canBeMistaken
+ * @tparam F
+ */
+class Bot[F[_] : Sync : Console](wordDict: WordService[F], game: Game[F], canBeMistaken: Int) {
   def start(): F[Unit] = for {
     _ <- Console[F].putString(s"I try to guess your word using $canBeMistaken failed tries. Please type first,last characters and a word length space separated.\nFor example:a b 10")
     answer <- Console[F].getString()
@@ -21,8 +28,8 @@ class Bot[F[_]: Sync : Console](wordDict: WordDict[F], game: Game[F], canBeMista
   } yield ()
 
   private def guessChar(char: Char)(game: Game[F]): F[Unit] = for {
-    _ <- Console[F].putString(s"Do you have '$char'? Please type its position or -1 in other case.")
-    _ <- Console[F].putString("If char occurs in a word a few times,please type its positions separated by space.")
+    _ <- Console[F].putString(s"Do you have '$char'? Please type char position started from 0, or -1 in other case.")
+    _ <- Console[F].putString("If char occurs in a word a few times, please type its positions separated by space.")
     posOr <- Console[F].getString()
     _ <- parseRespAndTellSuccOrFailedAttempt(char, posOr)(game)
     _ <- guessing(game)
@@ -36,12 +43,12 @@ class Bot[F[_]: Sync : Console](wordDict: WordDict[F], game: Game[F], canBeMista
       tellSuccOrFailedAttempt(char, pos)
     }).flatMap(_ => if (succ) writeGuessedWord() else ().pure[F])
     else {
-       val pos = posOr.toInt
-       tellSuccOrFailedAttempt(char, pos)
+      val pos = posOr.toInt
+      tellSuccOrFailedAttempt(char, pos)
     }
   }
 
-  private def tellSuccOrFailedAttempt(char: Char,pos: Int):F[Unit] = for {
+  private def tellSuccOrFailedAttempt(char: Char, pos: Int): F[Unit] = for {
     _ <- if (pos > -1) game.tell(SuccAttempt(char, pos)) else game.tell(FailedAttempt(char))
   } yield ()
 
@@ -64,7 +71,7 @@ class Bot[F[_]: Sync : Console](wordDict: WordDict[F], game: Game[F], canBeMista
   } yield ()
 
   private def parseWord(s: String): F[Word] = {
-    val Array(ch1, ch2, len) = s.split(" ")
-    Word(ch1(0), ch2(0), len.toInt)
-  }.pure[F]
+    val Array(firstChar, lastChar, wordLen) = s.split(" ")
+    Word(firstChar(0), lastChar(0), wordLen.toInt)
+    }.pure[F]
 }

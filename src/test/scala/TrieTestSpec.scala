@@ -3,7 +3,7 @@ import org.scalatest._
 
 class TrieTestSpec extends FlatSpec with Matchers with OptionValues with Inside with Inspectors {
   "Trie" should "guess  a word in one string trie" in {
-    val trie = Trie()
+    val trie = SuffixTree()
     trie.insert("recover")
 
     trie.markAsGuessed('r', 0)
@@ -22,7 +22,7 @@ class TrieTestSpec extends FlatSpec with Matchers with OptionValues with Inside 
   }
 
   "Trie" should "guess a word from 2 words with common prefix if last char of one word is guessed properly" in {
-    val trie = Trie()
+    val trie = SuffixTree()
     trie.insert("bar")
     trie.insert("bag")
 
@@ -36,7 +36,7 @@ class TrieTestSpec extends FlatSpec with Matchers with OptionValues with Inside 
 
   "Trie" should "return None if one char of word is marked as missing" in {
 
-    val trie = Trie()
+    val trie = SuffixTree()
     trie.insert("bar")
     trie.insert("bag")
 
@@ -47,10 +47,9 @@ class TrieTestSpec extends FlatSpec with Matchers with OptionValues with Inside 
   type Effect[A] = IO[A]
 
   "Trie" should "guess the word 'recover' if it loaded the all string from a file" in {
-    val wordDict = new FileWordDict[Effect](List("test_dict.txt"))
-    wordDict.loadDict()
+    val wordDict = WordService.create[Effect](List("test_dict.txt"))
     val words = wordDict.findByFirstLastCharLen('r', 'r', 7)
-    val trie = Trie()
+    val trie = SuffixTree()
     words.unsafeRunSync().foreach(trie.insert(_))
     trie.insert("recover")
 
